@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>threejs: a Three.js scene, rendered frame-exactly</title>
+<style>html, body { margin: 0; height: 100%; background: #101820; display: grid; place-items: center; } canvas { max-width: 100vw; max-height: 100vh; }</style>
+<!-- Three.js from a CDN, pinned to one version. For renders that must not depend on the network, copy it beside the page
+     and point the import map at the copy. -->
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script type="module">
+// A Three.js scene in canvas mode (docs/page-contract.md): Three.js draws on its canvas as it always does; draw(i) sets
+// the scene's state from the frame index and renders once; the helper copies the canvas and converts it.
+import * as THREE from 'three';
+import { renderParams, exposeRenderer } from '../../page/render-page.js';
+
+const P = renderParams();
+const FPS = 60, FRAMES = FPS * 8;
+const canvas = document.getElementById('c');
+if (P.render) { canvas.width = P.width; canvas.height = P.height; }
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(1);
+renderer.setSize(canvas.width, canvas.height, false);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101820);
+const camera = new THREE.PerspectiveCamera(40, canvas.width / canvas.height, 0.1, 100);
+const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(0.8, 0.26, 220, 32),
+  new THREE.MeshStandardMaterial({ color: 0xff8844, roughness: 0.3, metalness: 0.25 }));
+const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+sun.position.set(3, 4, 2);
+const rim = new THREE.DirectionalLight(0x6688ff, 1.2);
+rim.position.set(-3, -1, -2);
+scene.add(knot, sun, rim, new THREE.AmbientLight(0x303848));
+
+function draw(i) { // the whole scene state from i: no clock, nothing carried over from the previous frame
+  const t = i / FPS;
+  knot.rotation.set(t * 0.6, t * 0.9, 0);
+  camera.position.set(Math.sin(t * 0.25) * 4.2, 1.1, Math.cos(t * 0.25) * 4.2);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+}
+
+if (P.render) exposeRenderer({ canvas, fps: FPS, frameCount: FRAMES, draw, info: { title: 'threejs', three: THREE.REVISION } });
+else {
+  const t0 = performance.now();
+  renderer.setAnimationLoop((now) => draw(Math.floor(((now - t0) / 1000) * FPS) % FRAMES));
+}
+</script>
+</body>
+</html>

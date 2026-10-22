@@ -1,4 +1,4 @@
-"""python -m renderfarm exact <page>: is the page's GPU conversion exact on this GPU?
+"""python -m webgl2video exact <page>: is the page's GPU conversion exact on this GPU?
 
 The same frames are rendered twice through the page: as plain RGB (8-bit RGBA; with --hdr, 10-bit RGB) and in the
 encoder's own form made on the GPU (NV12; with --hdr, P010 and the light levels). A float64 numpy reference of the same
@@ -107,7 +107,7 @@ def grab(page, root, cfg: dict, profile, frames: list, require_hw: bool) -> dict
 
 
 def main(argv: list):
-    ap = argparse.ArgumentParser(prog="python -m renderfarm exact", description=__doc__,
+    ap = argparse.ArgumentParser(prog="python -m webgl2video exact", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("page")
     ap.add_argument("--root")

@@ -20,7 +20,7 @@ set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 FARM=$(cd "$HERE/../.." && pwd)
 GO=0; UPLOAD=0; KEEP=0; BUDGET=""; DECIDE=20; MAXS=14400; SITE=""; JOBF=""; PAGE=""; AUDIO=""; NAME=""; BUNDLE_OUT=""
-VOLUME=40; CONTAINER=30; RUNS="$HOME/.renderfarm/runs"; KEY="$HOME/.runpod/ssh/runpodctl-ssh-key"
+VOLUME=40; CONTAINER=30; RUNS="$HOME/.webgl2video/runs"; KEY="$HOME/.runpod/ssh/runpodctl-ssh-key"
 CANDS="NVIDIA RTX 4000 Ada Generation|SECURE|16|0.28;NVIDIA RTX A4500|SECURE|12|0.25;NVIDIA GeForce RTX 3090|SECURE|24|0.50"
 while [ $# -gt 0 ]; do case "$1" in
   --site) SITE="$2"; shift;; --job) JOBF="$2"; shift;; --page) PAGE="$2"; shift;; --audio) AUDIO="$2"; shift;;
@@ -45,7 +45,7 @@ sha() { if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1;
 
 # ---- the bundle: only what the pod needs ---------------------------------------------------------------------------------
 STAGE="$RUN/stage/farm"; mkdir -p "$STAGE"
-ln -s "$FARM/renderfarm" "$STAGE/renderfarm"; ln -s "$FARM/cloud" "$STAGE/cloud"; ln -s "$SITE" "$STAGE/site"
+ln -s "$FARM/webgl2video" "$STAGE/webgl2video"; ln -s "$FARM/cloud" "$STAGE/cloud"; ln -s "$FARM/nvenc-gpu-filter" "$STAGE/nvenc-gpu-filter"; ln -s "$SITE" "$STAGE/site"
 { cat "$JOBF"; echo; echo "PAGE=$(printf '%q' "$PAGE")"; } > "$STAGE/job.env"
 if [ -n "$AUDIO" ]; then
   mkdir -p "$STAGE/audio"; ln -s "$(cd "$(dirname "$AUDIO")" && pwd)/$(basename "$AUDIO")" "$STAGE/audio/$(basename "$AUDIO")"
@@ -54,7 +54,7 @@ fi
 B="$RUN/bundle.tar"
 TARFLAGS=(); case "$(tar --version 2>/dev/null || true)" in *bsdtar*) TARFLAGS=(--no-mac-metadata --no-xattrs);; esac
 COPYFILE_DISABLE=1 tar ${TARFLAGS[@]+"${TARFLAGS[@]}"} -chf "$B" --exclude='.git' --exclude='__pycache__' \
-  --exclude='.DS_Store' --exclude='.renderfarm' -C "$RUN/stage" farm
+  --exclude='.DS_Store' --exclude='.webgl2video' -C "$RUN/stage" farm
 rm -rf "$RUN/stage"
 echo "bundle: $(du -h "$B" | cut -f1) ($(tar -tf "$B" | wc -l | tr -d ' ') entries), sha256 $(sha "$B" | cut -c1-16)..."
 echo "job: $PAGE from $SITE${AUDIO:+, soundtrack $(basename "$AUDIO")}; candidates, in order: $CANDS"

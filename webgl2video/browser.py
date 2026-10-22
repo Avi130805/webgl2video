@@ -35,7 +35,7 @@ GPU_PROFILES = [
 # A Linux server with an NVIDIA GPU (a cloud pod: no display, no X server): ANGLE on Vulkan, then on EGL. The container
 # must expose the driver's graphics libraries (NVIDIA_DRIVER_CAPABILITIES=all); without them both fall back to
 # software, which --require-gpu refuses. ANGLE's OpenGL backend reads 4K frames back faster than its Vulkan one but
-# draws some edges and points differently: never mix backends within one film (RENDERFARM_GPU_PROFILE pins one).
+# draws some edges and points differently: never mix backends within one film (WEBGL2VIDEO_GPU_PROFILE pins one).
 if sys.platform.startswith("linux"):
     GPU_PROFILES[:0] = [
         {"name": "GPU (Linux, ANGLE on Vulkan), headless", "channel": "chromium", "headless": True,
@@ -371,9 +371,9 @@ class Engine:
 
 
 def preferred_profiles() -> list:
-    """GPU_PROFILES with a chosen one first: RENDERFARM_GPU_PROFILE (its index, or a word of its name)."""
+    """GPU_PROFILES with a chosen one first: WEBGL2VIDEO_GPU_PROFILE (its index, or a word of its name)."""
     import os
-    want = (os.environ.get("RENDERFARM_GPU_PROFILE") or "").lower()
+    want = (os.environ.get("WEBGL2VIDEO_GPU_PROFILE") or "").lower()
     if not want:
         return GPU_PROFILES
     first = [p for i, p in enumerate(GPU_PROFILES) if want == str(i) or want in p["name"].lower()]

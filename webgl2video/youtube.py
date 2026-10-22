@@ -1,4 +1,4 @@
-"""python -m renderfarm upload: upload a video to YouTube, from any machine (a laptop, a cloud pod). Standard library
+"""python -m webgl2video upload: upload a video to YouTube, from any machine (a laptop, a cloud pod). Standard library
 only; the upload is resumable (64 MB pieces, retried) and the video is Private unless told otherwise.
 
 Credentials come from environment variables (on a RunPod pod: RunPod secrets), or from an env file of NAME=value lines.
@@ -10,8 +10,8 @@ Nothing here ever prints a secret: not the client id or secret, not the refresh 
   --profile NAME                   reads YT_<NAME>_CLIENT_ID, YT_<NAME>_CLIENT_SECRET, YT_<NAME>_REFRESH_TOKEN instead
                                    (several channels or apps side by side)
 
-  python -m renderfarm upload --check                       which channel the login opens (read-only)
-  python -m renderfarm upload --file film.mp4 --title "..." [--description-file d.txt] [--tags "a, b"]
+  python -m webgl2video upload --check                       which channel the login opens (read-only)
+  python -m webgl2video upload --file film.mp4 --title "..." [--description-file d.txt] [--tags "a, b"]
 """
 
 import argparse
@@ -77,7 +77,7 @@ def load_env(env_file) -> dict:
 
 
 def main(argv: list):
-    ap = argparse.ArgumentParser(prog="python -m renderfarm upload", description=__doc__,
+    ap = argparse.ArgumentParser(prog="python -m webgl2video upload", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--profile", default="", help="read YT_<PROFILE>_* variables")
     ap.add_argument("--env-file", help="a file of NAME=value lines (the environment wins)")

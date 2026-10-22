@@ -12,7 +12,7 @@ import urllib.parse
 
 from common import tmpdir
 
-import renderfarm.youtube as yt
+import webgl2video.youtube as yt
 
 SECRETS = ("client-secret-value", "refresh-token-value")
 
@@ -73,6 +73,7 @@ class Upload(unittest.TestCase):
         video.write_bytes(payload)
         srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeGoogle)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
         self.addCleanup(srv.shutdown)
         base = f"http://127.0.0.1:{srv.server_address[1]}"
         real = yt.request

@@ -1,6 +1,6 @@
 # Uploading to YouTube
 
-`python -m renderfarm upload` (`renderfarm/youtube.py`) uploads a video with the YouTube Data API: standard library
+`python -m webgl2video upload` (`webgl2video/youtube.py`) uploads a video with the YouTube Data API: standard library
 only, resumable (64 MB pieces, retried), Private unless `--privacy` says otherwise, and the same file never twice (it
 leaves `<file>.youtube.txt` with the link). It never prints a secret. On a pod, the job runs it after the checks when
 the launcher was given `--upload`; the master goes from the pod straight to YouTube, which is faster than any home
@@ -18,7 +18,7 @@ connection (6.66 GB in 84 seconds) and keeps it off your disk.
    `YT_REFRESH_TOKEN` (or a file of `NAME=value` lines given with `--env-file`, kept out of any repository), and for
    cloud renders as RunPod secrets `yt_client_id`, `yt_client_secret`, `yt_refresh_token`.
 
-`python -m renderfarm upload --check` signs in and names the channel, without uploading. `--profile NAME` reads
+`python -m webgl2video upload --check` signs in and names the channel, without uploading. `--profile NAME` reads
 `YT_NAME_CLIENT_ID`, ... instead, for several channels side by side.
 
 ## Things Google decides

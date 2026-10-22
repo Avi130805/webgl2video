@@ -1,7 +1,7 @@
 /*
  * nvenc-gpu-filter.c: an LD_PRELOAD shim that lets NVENC work in a container on a multi-GPU host.
  *
- * The bug (NVIDIA drivers 565 and later; nvidia-container-toolkit#1249, k8s-device-plugin#1282): a container given one
+ * The bug (NVIDIA's 570, 575 and 580 drivers; nvidia-container-toolkit#1249, k8s-device-plugin#1282): a container given one
  * GPU of a multi-GPU host still gets the host's whole list of GPUs from the driver's resource manager (the RM control
  * NV0000_CTRL_CMD_GPU_GET_ATTACHED_IDS). NVENC then reaches for GPUs whose /dev/nvidiaN nodes aren't mounted and fails
  * with NV_ENC_ERR_UNSUPPORTED_DEVICE ("OpenEncodeSessionEx failed: unsupported device (2)"), unless the mounted GPU

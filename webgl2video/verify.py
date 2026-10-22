@@ -1,4 +1,4 @@
-"""python -m renderfarm verify <video>: check a finished video before it leaves the machine.
+"""python -m webgl2video verify <video>: check a finished video before it leaves the machine.
 
   PROBE      the streams (codec, size, frame rate, frames counted, duration) and the file's size and bitrate
   LOUDNESS   integrated loudness (EBU R128) and true peak of the soundtrack
@@ -8,7 +8,7 @@
 
 Exits 1 if the video does not hold --expect-frames frames.
 
-    python -m renderfarm verify film.mp4 --expect-frames 36000 --audio soundtrack.wav --stills checks/ [--full 600,1800]
+    python -m webgl2video verify film.mp4 --expect-frames 36000 --audio soundtrack.wav --stills checks/ [--full 600,1800]
 """
 
 import argparse
@@ -33,7 +33,7 @@ def pcm(src, t: float, dur: float):
 
 
 def main(argv: list):
-    ap = argparse.ArgumentParser(prog="python -m renderfarm verify", description=__doc__,
+    ap = argparse.ArgumentParser(prog="python -m webgl2video verify", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("video")
     ap.add_argument("--expect-frames", type=int)

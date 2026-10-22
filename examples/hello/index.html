@@ -211,7 +211,12 @@ async function soundtrack(rate) {
 
 if (P.render) {
   document.getElementById('hud').remove();
-  exposeRenderer({ gl, fps: FPS, frameCount: FRAMES, draw, audio: soundtrack, info: { title: 'hello', cut: CUT } });
+  if (P.get('source') === 'canvas' && !P.hdr) { // canvas mode (docs/page-contract.md): draw on the canvas, the helper copies it
+    canvas.width = P.width; canvas.height = P.height;
+    exposeRenderer({ canvas, fps: FPS, frameCount: FRAMES, draw: (i) => draw(i, null), audio: soundtrack, info: { title: 'hello' } });
+  } else {
+    exposeRenderer({ gl, fps: FPS, frameCount: FRAMES, draw, audio: soundtrack, info: { title: 'hello', cut: CUT } });
+  }
 } else {
   // a preview, not frame-exact: the frame the clock says, at the window's size
   const hud = document.getElementById('hud');

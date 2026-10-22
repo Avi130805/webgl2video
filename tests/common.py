@@ -9,7 +9,7 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))  # the renderfarm package, for the tests that import it
+sys.path.insert(0, str(ROOT))  # the webgl2video package, for the tests that import it
 PAGE = ROOT / "examples" / "hello" / "index.html"
 PY = sys.executable
 
@@ -23,14 +23,14 @@ def have_ffmpeg() -> bool:
 
 
 def rf(*args, timeout=900, env=None):
-    """python -m renderfarm <args>, from the repository root: (exit code, stdout + stderr)."""
-    r = subprocess.run([PY, "-m", "renderfarm", *map(str, args)], cwd=ROOT, capture_output=True, text=True,
+    """python -m webgl2video <args>, from the repository root: (exit code, stdout + stderr)."""
+    r = subprocess.run([PY, "-m", "webgl2video", *map(str, args)], cwd=ROOT, capture_output=True, text=True,
                        timeout=timeout, env={**os.environ, **(env or {})})
     return r.returncode, r.stdout + r.stderr
 
 
 def tmpdir(test) -> pathlib.Path:
-    d = pathlib.Path(tempfile.mkdtemp(prefix="renderfarm-test-"))
+    d = pathlib.Path(tempfile.mkdtemp(prefix="webgl2video-test-"))
     test.addCleanup(shutil.rmtree, d, ignore_errors=True)
     return d
 

@@ -3,16 +3,16 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "webgl-render-farm"
+name = "webgl2video"
 version = "0.1.0"
-description = "Render deterministic WebGL pages into frame-exact video (up to 4K60, SDR or HDR10) on a local or cloud GPU"
+description = "Render any WebGL or HTML animation (Three.js, shaders, p5.js, AI-generated pages) to frame-exact 4K60 video on a GPU, locally or on cheap cloud GPUs"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["playwright>=1.45", "numpy>=1.24"]
-# license: to be chosen (see LICENSE)
+license = { text = "MIT" }
 
 [project.scripts]
-renderfarm = "renderfarm.__main__:main"
+webgl2video = "webgl2video.__main__:main"
 
 [tool.setuptools]
-packages = ["renderfarm"]
+packages = ["webgl2video"]

@@ -1,4 +1,4 @@
-"""python -m renderfarm qa <work dir> <A> <B> <out dir>: check a rendered range of a film from its segments.
+"""python -m webgl2video qa <work dir> <A> <B> <out dir>: check a rendered range of a film from its segments.
 
 Every frame is decoded small (NVIDIA's decoder when ffmpeg has it) and compared with the one before as the mean
 absolute difference of its grey levels (0-255). The seams are checked too: the range's first frame against the last
@@ -10,7 +10,7 @@ flagged as a cut; a frame that differs sharply from both neighbours while they m
 start, every 400 frames, either side of each shot start, its end) and prints one JSON line, also written to
 <out>/check-A-B.json: {range, frames, decoder, max, top, known_cuts, flags, stills}.
 
-    python -m renderfarm qa .renderfarm/work/x 0 600 qa/ --cuts 120 [--starts 0,300] [--label w1-]
+    python -m webgl2video qa .webgl2video/work/x 0 600 qa/ --cuts 120 [--starts 0,300] [--label w1-]
 """
 
 import argparse
@@ -24,7 +24,7 @@ from .util import ffmpeg_bin
 
 
 def main(argv: list):
-    ap = argparse.ArgumentParser(prog="python -m renderfarm qa", description=__doc__,
+    ap = argparse.ArgumentParser(prog="python -m webgl2video qa", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("work")
     ap.add_argument("a", type=int)

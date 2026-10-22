@@ -54,7 +54,7 @@ def nvenc_h264(fps, cq: int, mbps: int = None) -> list:
 
 def x265(fps, crf: int, preset: str = "medium") -> list:
     """x265: Main 10, a closed GOP every second, the HDR10 QP optimisation. The mastering display and the light levels
-    go in the container (renderfarm/hdr.py): given to x265, they come with a MaxCLL of 0 in the stream."""
+    go in the container (webgl2video/hdr.py): given to x265, they come with a MaxCLL of 0 in the stream."""
     g = gop(fps)
     params = (f"keyint={g}:min-keyint={g}:scenecut=0:open-gop=0:colorprim=bt2020:transfer=smpte2084:"
               f"colormatrix=bt2020nc:range=limited:hdr10-opt=1:repeat-headers=1:log-level=error")

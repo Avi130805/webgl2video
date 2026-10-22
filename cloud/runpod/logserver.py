@@ -7,7 +7,7 @@ Streams, as they happen, over the SSH line launch.sh saved in <run>/ssh.txt:
   - the overall speed: frames rendered over the last two minutes across every worker (rate.py, every 20 s).
 
   python3 cloud/runpod/logserver.py [<run folder>] [--port 8787] [--workspace /workspace]
-      (default: the newest run under ~/.renderfarm/runs)
+      (default: the newest run under ~/.webgl2video/runs)
 """
 import collections
 import glob
@@ -29,7 +29,7 @@ args = [a for a in args if a not in (str(PORT), WS)]
 if args and not args[0].isdigit():
     RUN = pathlib.Path(args[0]).expanduser()
 else:
-    runs = [pathlib.Path(p) for p in glob.glob(os.path.expanduser("~/.renderfarm/runs/*")) if os.path.exists(os.path.join(p, "ssh.txt"))]
+    runs = [pathlib.Path(p) for p in glob.glob(os.path.expanduser("~/.webgl2video/runs/*")) if os.path.exists(os.path.join(p, "ssh.txt"))]
     if not runs:
         sys.exit("no run folder with an ssh.txt: give the one launch.sh printed")
     RUN = max(runs, key=lambda p: p.stat().st_mtime)

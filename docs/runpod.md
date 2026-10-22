@@ -22,7 +22,7 @@ Everything below runs from your machine; nothing is spent until `--go`.
 ## Each render
 
 1. Put the page and everything it loads in one folder (the "site"), and check it renders locally:
-   `python -m renderfarm render site/index.html --size 1280x720 --frames 0:120`.
+   `python -m webgl2video render site/index.html --size 1280x720 --frames 0:120`.
 2. Copy `cloud/runpod/job.env.example` and fill it in (the page, the size, known hard cuts, slow ranges, the title).
 3. Dry run: builds the bundle and prints the plan.
 
@@ -54,7 +54,7 @@ Everything below runs from your machine; nothing is spent until `--go`.
 
    With `--budget 0.60` on the launcher it decides by itself: the fastest tested count whose projection fits, or stop.
    No decision in `--decide-minutes` (20): the pod stops, keeping its work (below).
-7. The results come back into the run folder (`~/.renderfarm/runs/<name>-<date>/deliver`): a QA sheet and JSON per
+7. The results come back into the run folder (`~/.webgl2video/runs/<name>-<date>/deliver`): a QA sheet and JSON per
    job, stills, the scaling test's numbers, every log, and the master itself unless it went to YouTube (`--upload`).
 
 ## What the job does, and what it costs to stop it
@@ -119,4 +119,4 @@ the job has decided to go (the join waits for it).
 | `cloud/runpod/logserver.py` | your machine | the live view (SSH; `rate.py` on the pod) |
 | `cloud/runpod/job.sh` | the pod | everything above; `WORKSPACE=<dir> SKIP_SETUP=1 ENCODER=x264` runs it anywhere |
 | `cloud/runpod/queue.py`, `ladder.py`, `cpu_sample.py`, `rate.py` | the pod | the queue, the scaling test's numbers, the CPU by process, the speed |
-| `cloud/nvenc-gpu-filter.c` | the pod | the NVENC multi-GPU container fix, built at setup |
+| `nvenc-gpu-filter/` | the pod | the NVENC multi-GPU container fix, built at setup (its own [README](../nvenc-gpu-filter/README.md)) |

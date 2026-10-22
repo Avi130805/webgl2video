@@ -30,6 +30,33 @@ class Exact(unittest.TestCase):
         self.assertEqual(out.count(" light: top code"), 5)
 
 
+@unittest.skipUnless(have_browser(), "needs playwright (with its Chromium) and numpy")
+class CanvasMode(unittest.TestCase):
+    """A page that draws on a canvas (any API) and lets the helper copy it gives the same frames as one that renders
+    into the helper's target; a Canvas 2D page converts exactly too."""
+
+    def grab(self, page, fmt, params, frames):
+        from webgl2video.browser import CPU_PROFILE, Engine, pick_profile
+        root = PAGE.parent.parent.parent
+        cfg = dict(width=640, height=360, out_width=640, out_height=360, fps=None, params=params, format=fmt)
+        prof, _ = pick_profile(page, root, cfg)
+        e = Engine(page, root, cfg, prof or CPU_PROFILE)
+        try:
+            e.open()
+            return [e.frame_raw(i) for i in frames]
+        finally:
+            e.close()
+
+    def test_same_frames_as_the_target(self):
+        for fmt in ("rgba", "nv12"):
+            self.assertEqual(self.grab(PAGE, fmt, [], [0, 130, 400]), self.grab(PAGE, fmt, ["source=canvas"], [0, 130, 400]), fmt)
+
+    def test_canvas2d_exact(self):
+        code, out = rf("exact", PAGE.parent.parent / "canvas2d" / "index.html", "--size", "640x360", "--frames", "0,90,300")
+        self.assertEqual(code, 0, out)
+        self.assertIn("EXACT", out)
+
+
 @unittest.skipUnless(have_browser() and have_ffmpeg(), "needs playwright, numpy and ffmpeg")
 class AgainstFfmpeg(unittest.TestCase):
     """What ffmpeg's own conversion (the --convert cpu path) makes of the same RGB frames, against the reference: close
@@ -39,9 +66,9 @@ class AgainstFfmpeg(unittest.TestCase):
         import pathlib
         import subprocess
         import numpy as np
-        from renderfarm.browser import CPU_PROFILE, Engine, pick_profile
-        from renderfarm.encode import LEFT
-        from renderfarm.exact import nv12_planes, nv12_reference
+        from webgl2video.browser import CPU_PROFILE, Engine, pick_profile
+        from webgl2video.encode import LEFT
+        from webgl2video.exact import nv12_planes, nv12_reference
         w, h = 320, 180
         cfg = dict(width=w, height=h, out_width=w, out_height=h, fps=None, params=[], format="rgba")
         prof, _ = pick_profile(PAGE, PAGE.parent.parent.parent, cfg)

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>canvas2d: a Canvas 2D animation, rendered frame-exactly</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070c; display: grid; place-items: center; }
+  canvas { max-width: 100vw; max-height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script type="module">
+// No WebGL in this page: it draws with the Canvas 2D API, as most HTML animations (and the libraries built on it) do.
+// Canvas mode (docs/page-contract.md): draw(i) paints frame i on the canvas, the helper copies and converts it.
+// Every frame is a function of i alone: the trails are drawn from the orbit's equation, not accumulated.
+import { renderParams, exposeRenderer } from '../../page/render-page.js';
+
+const P = renderParams();
+const FPS = 60, FRAMES = FPS * 6;
+const canvas = document.getElementById('c');
+if (P.render) { canvas.width = P.width; canvas.height = P.height; }
+const g = canvas.getContext('2d', { alpha: false });
+
+const BODIES = [ // radius (of the short side), period (s), size, colour
+  [0.12, 2.0, 0.012, '#f2c14e'], [0.2, 3.0, 0.018, '#f78154'], [0.29, 4.5, 0.014, '#4d9de0'],
+  [0.37, 6.0, 0.022, '#7ae582'], [0.45, 12.0, 0.010, '#c792ea'],
+];
+
+function draw(i) {
+  const W = canvas.width, H = canvas.height, S = Math.min(W, H), t = i / FPS;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const sky = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, S * 0.75);
+  sky.addColorStop(0, '#141a2e');
+  sky.addColorStop(1, '#05070c');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, W, H);
+  g.translate(W / 2, H / 2);
+  g.fillStyle = '#fff6d5';
+  g.beginPath(); g.arc(0, 0, S * 0.04, 0, Math.PI * 2); g.fill();
+  BODIES.forEach(([r, period, size, colour], k) => {
+    const a = (t / period) * Math.PI * 2 + k;
+    g.strokeStyle = 'rgba(255,255,255,0.08)';
+    g.lineWidth = Math.max(1, S * 0.002);
+    g.beginPath(); g.arc(0, 0, r * S, 0, Math.PI * 2); g.stroke();
+    for (let s = 24; s > 0; s--) { // the trail: the last quarter turn, fading
+      g.strokeStyle = colour;
+      g.globalAlpha = (1 - s / 24) * 0.5;
+      g.lineWidth = size * S * (1 - s / 30);
+      g.beginPath(); g.arc(0, 0, r * S, a - (s / 24) * Math.PI / 2, a - ((s - 1) / 24) * Math.PI / 2); g.stroke();
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = colour;
+    g.beginPath(); g.arc(Math.cos(a) * r * S, Math.sin(a) * r * S, size * S, 0, Math.PI * 2); g.fill();
+  });
+}
+
+if (P.render) exposeRenderer({ canvas, fps: FPS, frameCount: FRAMES, draw, info: { title: 'canvas2d' } });
+else {
+  const t0 = performance.now();
+  const loop = (now) => { draw(Math.floor(((now - t0) / 1000) * FPS) % FRAMES); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

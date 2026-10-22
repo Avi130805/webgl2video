@@ -32,6 +32,9 @@ here starts fresh.
 
 ## Changed on the way
 
+- Canvas mode: a page that draws on a canvas with any API (Canvas 2D, Three.js) hands the canvas over, and the helper
+  copies and converts it; the films used their own WebGL targets. `gpucheck` checks a machine for hardware WebGL
+  without a page. The NVENC shim became a component of its own (`nvenc-gpu-filter/`, with a README).
 - The page side is a library (`page/render-page.js`) any WebGL2 page can use, not a mode of one app: a page draws into
   a target the helper binds, and the helper quantises, converts, meters, reads back and posts. The films composed each
   frame on a 2D canvas before the GPU conversion; this draws straight into a WebGL target (one copy less).

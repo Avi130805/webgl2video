@@ -1,4 +1,4 @@
-"""python -m renderfarm render <page>: render a deterministic WebGL page into a video, frame-exactly.
+"""python -m webgl2video render <page>: render a deterministic WebGL page into a video, frame-exactly.
 
 It renders resumable segments (a keyframe every second, no B-frames) into a work folder, then joins them by stream copy
 with the soundtrack. Interrupted, the same command continues where it stopped; --frames A:B --segments-only renders one
@@ -23,13 +23,13 @@ from .util import ffmpeg_bin, first_line, fmt_dur, log, run
 
 
 class Progress:
-    """A progress line: rewritten in place on a terminal; in a log, one line every RENDERFARM_PROGRESS_SECONDS (30)."""
+    """A progress line: rewritten in place on a terminal; in a log, one line every WEBGL2VIDEO_PROGRESS_SECONDS (30)."""
 
     def __init__(self, total: int, done: int):
         self.total, self.done, self.base = total, done, done
         self.t0 = self.last = time.time()
         self.tty = sys.stdout.isatty()
-        self.every = float(os.environ.get("RENDERFARM_PROGRESS_SECONDS", "30"))
+        self.every = float(os.environ.get("WEBGL2VIDEO_PROGRESS_SECONDS", "30"))
 
     def tick(self):
         self.done += 1
@@ -110,7 +110,7 @@ def assemble_sdr(segments: list, audio, out: pathlib.Path, fps, frames: int, tmp
 
 
 def main(argv: list):
-    ap = argparse.ArgumentParser(prog="python -m renderfarm render", description=__doc__,
+    ap = argparse.ArgumentParser(prog="python -m webgl2video render", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("page", help="the page (an .html file that follows docs/page-contract.md)")
     ap.add_argument("--root", help="the folder served to the browser (default: the current folder if it holds the page,"
@@ -129,7 +129,7 @@ def main(argv: list):
     ap.add_argument("--preset", default="medium", help="x264/x265 speed preset")
     ap.add_argument("--frames", default="", help="render only frames A:B")
     ap.add_argument("--segment", type=int, default=300, help="frames per resumable segment (default 300)")
-    ap.add_argument("--work", help="the segments' folder (default .renderfarm/work/<page>-<hash>)")
+    ap.add_argument("--work", help="the segments' folder (default .webgl2video/work/<page>-<hash>)")
     ap.add_argument("--out", help="the video file (default <page>-<H>p<fps>.mp4; .mkv with --hdr)")
     ap.add_argument("--segments-only", action="store_true", help="render the segments and stop (no join)")
     ap.add_argument("--audio", default="auto", help="'auto' (the page's soundtrack, if it has one), 'page', 'none',"
@@ -197,7 +197,7 @@ def main(argv: list):
                     "fps": fps, "format": fmt, "params": args.param, "segment": args.segment, "encoder": enc["tag"]}
         tag = hashlib.sha1(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:12]
         work = (pathlib.Path(args.work).expanduser().resolve() if args.work
-                else pathlib.Path.cwd() / ".renderfarm" / "work" / f"{page.stem}-{tag}")
+                else pathlib.Path.cwd() / ".webgl2video" / "work" / f"{page.stem}-{tag}")
         claim_work_dir(work, settings)
         segs = []
         s = a
@@ -276,9 +276,9 @@ def main(argv: list):
 
 
 def probe(argv: list):
-    """python -m renderfarm probe <page>: which browser profile gets hardware WebGL here, and what the page says of
+    """python -m webgl2video probe <page>: which browser profile gets hardware WebGL here, and what the page says of
     itself (frames, fps, soundtrack). One JSON line; exit 1 without hardware WebGL when --require-gpu."""
-    ap = argparse.ArgumentParser(prog="python -m renderfarm probe")
+    ap = argparse.ArgumentParser(prog="python -m webgl2video probe")
     ap.add_argument("page")
     ap.add_argument("--root")
     ap.add_argument("--hdr", action="store_true")

@@ -17,7 +17,7 @@ seen, total, t0, stop, first = {}, {}, time.time(), False, True
 
 
 def kind(cmd):
-    if "renderfarm" in cmd and "python" in cmd:
+    if "webgl2video" in cmd and "python" in cmd:
         return "driver"
     if re.search(r"(^|/)ffmpeg\b", cmd):
         return "ffmpeg"

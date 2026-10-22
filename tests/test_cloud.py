@@ -79,7 +79,7 @@ class Deploy(unittest.TestCase):
 class NvencShim(unittest.TestCase):
     def test_mock_driver(self):
         d = tmpdir(self)
-        subprocess.run(["cc", "-DNVENC_FILTER_TEST", "-o", d / "t", ROOT / "cloud" / "nvenc-gpu-filter.c", "-lpthread"],
+        subprocess.run(["cc", "-DNVENC_FILTER_TEST", "-o", d / "t", ROOT / "nvenc-gpu-filter" / "nvenc-gpu-filter.c", "-lpthread"],
                        check=True, capture_output=True)
         r = subprocess.run([d / "t"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -102,12 +102,13 @@ class PodJobHere(unittest.TestCase):
             names = t.getnames()
             self.assertIn("farm/job.env", names)
             self.assertIn("farm/cloud/runpod/job.sh", names)
+            self.assertIn("farm/nvenc-gpu-filter/nvenc-gpu-filter.c", names)
             self.assertFalse([n for n in names if "/.git/" in n or "__pycache__" in n])
             t.extractall(d / "pod")
 
     def job(self, d, **extra):
         env = {**os.environ, "WORKSPACE": str(d / "ws"), "SKIP_SETUP": "1", "PYTHON": PY,
-               "RENDERFARM_PROGRESS_SECONDS": "1", "LADDER_MIN_WINDOW": "1", "MAX_SECONDS": "900", **extra}
+               "WEBGL2VIDEO_PROGRESS_SECONDS": "1", "LADDER_MIN_WINDOW": "1", "MAX_SECONDS": "900", **extra}
         r = subprocess.run(["bash", d / "pod" / "farm" / "cloud" / "runpod" / "job.sh"], capture_output=True, text=True,
                            env=env, timeout=900)
         return r.returncode, r.stdout + r.stderr

@@ -79,13 +79,13 @@ The vCPU count RunPod lists for a GPU is not what a pod gets: its cgroup quota v
 - Pods made through the API start SSH only with a `PUBLIC_KEY` in their environment; Community cloud pods may have no
   public IP (ask for `supportPublicIp`).
 - NVENC fails with `unsupported device` in a container given one GPU of a multi-GPU host (NVIDIA drivers 565 and later,
-  nvidia-container-toolkit#1249): `cloud/nvenc-gpu-filter.c` filters the driver's GPU list to the mounted one.
+  nvidia-container-toolkit#1249): `nvenc-gpu-filter/` filters the driver's GPU list to the mounted one.
 - The container must expose the driver's graphics libraries (`NVIDIA_DRIVER_CAPABILITIES=all`), or Chromium falls back
   to software rendering; the job refuses to render then.
 - HDR readback buffers were reused, so the page's garbage collector seldom ran and 4K Blobs piled up until uploads
   failed at frame 16: the driver collects garbage every four frames.
 - ANGLE's OpenGL backend reads 4K frames back 2-4 times faster than its Vulkan backend on NVIDIA, but draws points and
-  edges differently: never mix backends within one film (`RENDERFARM_GPU_PROFILE` pins one).
+  edges differently: never mix backends within one film (`WEBGL2VIDEO_GPU_PROFILE` pins one).
 
 ## YouTube from the pod
 

@@ -116,7 +116,31 @@ if (P.render) exposeRenderer({ gl, fps: 60, frameCount: 3600, draw, audio: async
 - `audio(rate)`, optional, returns the soundtrack as a WAV file's bytes; `encodeWav(audioBuffer)` makes one from an
   `OfflineAudioContext` render. `--audio auto` (the default) uses it; `--audio FILE` replaces it.
 
-## 6. Why it converts on the GPU
+## 6. Canvas mode: any page that draws on a canvas
+
+Most HTML animations draw on a canvas through a library (p5.js, Three.js, PixiJS, D3, a page an AI wrote) and never
+touch a framebuffer. They can hand over the canvas instead of a WebGL context:
+
+```js
+import { renderParams, exposeRenderer } from './render-page.js';
+const P = renderParams();
+const canvas = document.querySelector('canvas');
+if (P.render) { canvas.width = P.width; canvas.height = P.height; }   // frames are the canvas's own pixels
+// ... set up the animation, but do not start its own clock or requestAnimationFrame loop when P.render ...
+if (P.render) exposeRenderer({ canvas, fps: 60, frameCount: 600, draw: (i) => drawFrame(i / 60) });
+```
+
+`draw(i)` draws frame `i` on the canvas, synchronously, with whatever API the page uses (Canvas 2D, WebGL, WebGL2). The
+helper then copies the canvas's 8-bit pixels into its own WebGL2 context (a GPU-side copy) and converts them as usual.
+With a library, `drawFrame(t)` usually means: set the library's time or animation state from `t`, then call its render
+or redraw once (for example p5's `redraw()` after `noLoop()`, or Three.js's `renderer.render(scene, camera)`).
+
+- The canvas must be `width × height` (the URL's `w`, `h`); frames are opaque (paint a background).
+- Canvas mode is SDR only: a canvas holds 8-bit display values. For HDR, render PQ values into the target (section 5).
+- It gives exactly the frames the target path gives: `tests/test_exact.py` renders the example both ways and compares the
+  bytes. `examples/canvas2d` is a page with no WebGL at all.
+
+## 7. Why it converts on the GPU
 
 On a cloud GPU the render is bound by the CPU, not the GPU: one worker's ffmpeg RGB to Y'CbCr conversion cost about as
 much CPU as the browser's page thread, and metering HDR light in numpy another 70% of a core. Converting in a fragment
@@ -124,7 +148,7 @@ shader is nearly free for the GPU, and NV12 is 62% smaller than RGBA to read bac
 10-bit RGB). On the example page at 4K on an M2 MacBook Air, one worker renders 36 frames/s with the GPU conversion and
 21 with ffmpeg's.
 
-The shaders compute in float32 what a float64 reference computes: `python -m renderfarm exact <page>` renders the same
+The shaders compute in float32 what a float64 reference computes: `python -m webgl2video exact <page>` renders the same
 frames both ways and compares (in `tests/test_exact.py`, and on every pod before a render trusts the GPU path). ffmpeg's
 own conversion (swscale) rounds differently: within a code in 8-bit luma, a few codes at sharp colour edges in chroma
 (the driver tells it to site chroma left, as the GPU path does; its default, the centre, differed by up to 7 codes), and

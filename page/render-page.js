@@ -1,7 +1,7 @@
 // render-page.js: the page side of the frame contract (docs/page-contract.md).
 //
 // A page that can be rendered frame by frame draws frame i when asked and calls exposeRenderer() once it is ready.
-// The render driver (python -m renderfarm render) opens it as
+// The render driver (python -m webgl2video render) opens it as
 //
 //     <page>?render=1&w=<width>&h=<height>&format=<rgba|nv12|x2bgr10|p010>[&fps=<fps>][&<your own parameters>]
 //
@@ -18,6 +18,9 @@
 //   ... create the WebGL2 context, compile, load everything ...
 //   exposeRenderer({ gl, fps: 60, frameCount: 600, draw(i, target) { ... } });
 //
+// A page that draws on a canvas with any API (Canvas 2D, p5.js, Three.js, a page an AI wrote) can skip framebuffers:
+//   exposeRenderer({ canvas, fps: 60, frameCount: 600, draw(i) { ... } });   // draw frame i on the canvas, at w x h
+//
 // draw(i, target) must be a pure function of i: no clock, no unseeded randomness, no state carried from frame to frame
 // (the driver renders any range of frames, in pieces, on many machines, and joins them). target is
 // { framebuffer, texture, width, height, hdr }, bound, with the viewport set to it: draw frame i into it (SDR: display
@@ -27,7 +30,7 @@
 // Why the conversion happens here: on a cloud GPU the render is bound by the CPU, not the GPU. Converting RGB to
 // Y'CbCr in ffmpeg (and metering HDR light in numpy) cost a render worker more CPU than the page itself, and the 4:2:0
 // frame is 62% (SDR) or 25% (HDR) smaller to read back. The conversion matches a float64 reference to within one
-// code (`python -m renderfarm exact` checks it on the GPU at hand; tests/test_exact.py); ffmpeg's own (swscale, the
+// code (`python -m webgl2video exact` checks it on the GPU at hand; tests/test_exact.py); ffmpeg's own (swscale, the
 // --convert cpu path) rounds differently by a code or two.
 
 export const FORMATS = {
@@ -482,9 +485,11 @@ const AUDIO_CHUNK = 8 * 1024 * 1024; // the soundtrack crosses to the driver in 
 /**
  * Make the page renderable: window.__RENDER, then window.__RENDER_READY = true.
  *
- *   gl          a WebGL2 context
+ *   gl          a WebGL2 context: draw(i, target) renders frame i into target (or returns a texture of its own)
+ *   canvas      or, instead of gl, any canvas the page draws its frames on (2D, WebGL, p5.js, Three.js...): draw(i)
+ *               draws frame i on it, synchronously, at width x height, and the helper copies it from there (SDR only)
  *   fps         frames per second of the timeline; frameCount, how many frames it has
- *   draw        (i, target) => undefined | WebGLTexture (see the top of this file)
+ *   draw        (i, target) => undefined | WebGLTexture with gl; (i) => undefined with canvas
  *   width, height, format    default: the URL's w, h and format
  *   peakNits    HDR: the mastering display's peak; nothing brighter is written (default 1000)
  *   dither      HDR: a TPDF dither before the 10-bit quantisation (default true)
@@ -500,9 +505,19 @@ export function exposeRenderer(options) {
   }
 }
 
-function expose({ gl, fps, frameCount, draw, width, height, format, peakNits = 1000, dither = true, audio = null, info = null }) {
+function expose({ gl, canvas = null, fps, frameCount, draw, width, height, format, peakNits = 1000, dither = true, audio = null, info = null }) {
   const P = renderParams();
-  if (typeof WebGL2RenderingContext === 'undefined' || !(gl instanceof WebGL2RenderingContext)) throw new Error('render-page: exposeRenderer needs a WebGL2 context');
+  if (canvas) {
+    // Canvas mode: the page draws on a canvas of its own, with any API; the helper copies each frame from it into its
+    // own WebGL2 context (a GPU-side copy of the canvas's 8-bit pixels) and converts it there.
+    if (!(typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement)) throw new Error('render-page: canvas is not a <canvas> element');
+    if (FORMATS[format ?? P.format] && FORMATS[format ?? P.format].hdr) throw new Error('render-page: a canvas holds 8-bit SDR pixels: for HDR, draw PQ values into the target with gl (docs/page-contract.md)');
+    width = width ?? P.width ?? canvas.width;
+    height = height ?? P.height ?? canvas.height;
+    gl = document.createElement('canvas').getContext('webgl2', { antialias: false, alpha: false, depth: false, powerPreference: 'high-performance' });
+    if (!gl) throw new Error('render-page: WebGL2 is not available here');
+  }
+  if (typeof WebGL2RenderingContext === 'undefined' || !(gl instanceof WebGL2RenderingContext)) throw new Error('render-page: exposeRenderer needs a WebGL2 context (gl) or a canvas');
   if (typeof draw !== 'function') throw new Error('render-page: exposeRenderer needs draw(i, target)');
   if (!(fps > 0)) throw new Error(`render-page: fps ${fps}`);
   if (!(Number.isInteger(frameCount) && frameCount > 0)) throw new Error(`render-page: frameCount ${frameCount}`);
@@ -529,6 +544,20 @@ function expose({ gl, fps, frameCount, draw, width, height, format, peakNits = 1
   // Draw frame i and convert it into slot `slot`. GPU work only: nothing here waits for it.
   function renderInto(i, slot) {
     if (!(Number.isInteger(i) && i >= 0 && i < frameCount)) throw new Error(`render-page: frame ${i} is outside 0..${frameCount - 1}`);
+    if (canvas) {
+      draw(i);
+      if (canvas.width !== W || canvas.height !== H) throw new Error(`render-page: the canvas is ${canvas.width}x${canvas.height}, the frame ${W}x${H}: size it from renderParams()`);
+      // the canvas's own 8-bit values, rows from the bottom (as GL renders), not premultiplied, no colour conversion
+      gl.bindTexture(gl.TEXTURE_2D, target.texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+      if (gl.isContextLost()) throw new Error('render-page: WebGL context lost');
+      conv.convert(target.texture, slot, i);
+      pending = { i, slot };
+      return;
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
     gl.viewport(0, 0, W, H);
     const own = draw(i, target);

@@ -12,7 +12,7 @@
 #      (dollars), the fastest tested count whose projection fits goes by itself. No decision in DECIDE_MINUTES: the pod
 #      stops (it is not deleted) and its volume keeps every finished segment
 #   5. the rest of the film, NW workers on one queue (each job claimed with mkdir, which only one worker can win), each
-#      job checked as it lands (python -m renderfarm qa: unexpected cuts, single-frame flashes, stills)
+#      job checked as it lands (python -m webgl2video qa: unexpected cuts, single-frame flashes, stills)
 #   6. the join, the checks (frames, loudness, sync, stills), the upload (optional, Private), the results to the
 #      launcher (RESULTS_READY, then COLLECTED), and the pod deletes itself
 #
@@ -32,7 +32,7 @@
 # Bash 3.2 or later (the dry run works with macOS's own bash).
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-FARM=$(cd "$HERE/../.." && pwd) # the bundle: renderfarm/, cloud/, site/, job.env
+FARM=$(cd "$HERE/../.." && pwd) # the bundle: webgl2video/, cloud/, nvenc-gpu-filter/, site/, job.env
 MODE=${1:-job}
 
 # On a pod this script is started over SSH, which does not inherit the container's environment (RunPod's secrets and
@@ -163,7 +163,7 @@ frames_done() {  # the frames of the jobs marked done (a job rendered again on a
 }
 
 render_cmd() {  # the driver, as every job and the join run it
-  RENDER=("$PY" -m renderfarm render "$SITE/$PAGE" --root "$SITE" --size "$SIZE" --scale "$SCALE" --encoder "$ENCODER"
+  RENDER=("$PY" -m webgl2video render "$SITE/$PAGE" --root "$SITE" --size "$SIZE" --scale "$SCALE" --encoder "$ENCODER"
           --segment "$SEGMENT" --work "$WORK" --convert "$CONVERT")
   if [ -n "$QUALITY" ]; then RENDER+=(--quality "$QUALITY"); fi
   if [ "$HDR" = 1 ]; then RENDER+=(--hdr); fi
@@ -178,7 +178,7 @@ job() {  # $1 = worker, $2 = queue index: that job rendered, then checked; 1 on 
   "${RENDER[@]}" --frames "$j" --segments-only > "$lg" 2>&1 \
     || { log "JOB $j FAILED (worker $k): $(tail -2 "$lg" | tr '\n' ' ')"; return 1; }
   dt=$(( $(date +%s) - t )); touch "$W/done/$idx"
-  local qa=("$PY" -m renderfarm qa "$WORK" "$a" "$b" "$DELIVER/checks")
+  local qa=("$PY" -m webgl2video qa "$WORK" "$a" "$b" "$DELIVER/checks")
   if [ -n "$CUTS" ]; then qa+=(--cuts "$CUTS"); fi
   if [ -n "$STARTS" ]; then qa+=(--starts "$STARTS"); fi
   "${qa[@]}" > "$W/logs/check-$a-$b.log" 2>&1 || log "CHECK $j: the checker failed ($(tail -1 "$W/logs/check-$a-$b.log"))"
@@ -277,9 +277,9 @@ else
   nvidia-smi -q > "$W/logs/nvidia-smi-q.txt" 2>/dev/null || true
   log "PCIe: $(grep -A3 'GPU Link Info' "$W/logs/nvidia-smi-q.txt" | grep -E 'Max|Current' | head -4 | tr -s ' ' | tr '\n' ' ')"
   log "clocks: $(nvidia-smi --query-gpu=clocks.max.graphics,clocks.max.memory,power.limit --format=csv,noheader)"
-  # NVENC on a multi-GPU host needs the GPU-filter shim (cloud/nvenc-gpu-filter.c), loaded into every ffmpeg by a wrapper
+  # NVENC on a multi-GPU host needs the GPU-filter shim (nvenc-gpu-filter/), loaded into every ffmpeg by a wrapper
   export PATH="/usr/local/bin:$PATH"
-  if gcc -O2 -shared -fPIC -o /opt/nvenc-gpu-filter.so "$FARM/cloud/nvenc-gpu-filter.c" -ldl -lpthread 2> "$W/logs/shim.txt"; then
+  if gcc -O2 -shared -fPIC -o /opt/nvenc-gpu-filter.so "$FARM/nvenc-gpu-filter/nvenc-gpu-filter.c" -ldl -lpthread 2> "$W/logs/shim.txt"; then
     printf '#!/bin/sh\nLD_PRELOAD=/opt/nvenc-gpu-filter.so${LD_PRELOAD:+:$LD_PRELOAD} exec /usr/bin/ffmpeg "$@"\n' > /usr/local/bin/ffmpeg
     chmod +x /usr/local/bin/ffmpeg; hash -r
   fi
@@ -316,7 +316,7 @@ FLAGS=(--root "$SITE")
 if [ "$HDR" = 1 ]; then FLAGS+=(--hdr); fi
 for kv in $PARAMS; do FLAGS+=(--param "$kv"); done
 if [ "$ALLOW_CPU" != 1 ]; then FLAGS+=(--require-gpu); fi
-"$PY" -m renderfarm probe "$SITE/$PAGE" "${FLAGS[@]}" > "$W/logs/probe.json" 2> "$W/logs/probe.log" \
+"$PY" -m webgl2video probe "$SITE/$PAGE" "${FLAGS[@]}" > "$W/logs/probe.json" 2> "$W/logs/probe.log" \
   || die "no hardware WebGL for the page here: $(tail -2 "$W/logs/probe.log" | tr '\n' ' ')"
 FRAMES=$(python3 -c 'import json, sys; print(json.loads(open(sys.argv[1]).read().splitlines()[-1])["frames"])' "$W/logs/probe.json")
 log "page: $(tail -1 "$W/logs/probe.json")"
@@ -324,14 +324,14 @@ RSIZE=$(python3 -c 'import sys; w, h = map(int, sys.argv[1].split("x")); s = flo
 EXACT_AT=$(python3 -c "n = $FRAMES; print(','.join(sorted({str(min(n - 1, int(n * k / 5))) for k in range(1, 5)}, key=int)))")
 # The page's conversion (NV12, or P010 and the light levels) against a float64 reference made from its plain RGB
 # frames, on this GPU, at the render size: within one code on a negligible share of samples, or ffmpeg converts.
-if "$PY" -m renderfarm exact "$SITE/$PAGE" --size "$RSIZE" --frames "$EXACT_AT" "${FLAGS[@]}" > "$W/logs/exact.log" 2>&1; then
+if "$PY" -m webgl2video exact "$SITE/$PAGE" --size "$RSIZE" --frames "$EXACT_AT" "${FLAGS[@]}" > "$W/logs/exact.log" 2>&1; then
   CONVERT=gpu; log "GPU conversion: exact on this GPU ($RSIZE, frames $EXACT_AT); the render uses it"
 else
   CONVERT=cpu; log "GPU conversion: NOT exact here (logs/exact.log); ffmpeg converts the frames instead"
 fi
 grep -E "^frame|EXACT" "$W/logs/exact.log" | head -20
 if [ "$YT_UPLOAD" = 1 ]; then # the login, before hours of rendering depend on it
-  "$PY" -m renderfarm upload --check > "$W/logs/upload-check.log" 2>&1 \
+  "$PY" -m webgl2video upload --check > "$W/logs/upload-check.log" 2>&1 \
     || die "the YouTube login failed (the RunPod secrets yt_client_id, yt_client_secret, yt_refresh_token): $(tail -1 "$W/logs/upload-check.log")"
   log "YouTube: $(head -1 "$W/logs/upload-check.log")"
 fi
@@ -430,7 +430,7 @@ SYNC=""
 case "$AUDIO_ARG" in auto|page) SYNC="$WORK/audio-page.wav";; none) ;; *) SYNC="$AUDIO_ARG";; esac
 
 log "PHASE verify"
-V=("$PY" -m renderfarm verify "$M" --expect-frames "$FRAMES" --stills "$DELIVER/stills")
+V=("$PY" -m webgl2video verify "$M" --expect-frames "$FRAMES" --stills "$DELIVER/stills")
 if [ -n "$SYNC" ] && [ -f "$SYNC" ]; then V+=(--audio "$SYNC"); fi
 if [ -n "$STILLS_FULL" ]; then V+=(--full "$STILLS_FULL"); fi
 "${V[@]}" > "$W/logs/verify.log" 2>&1; VC=$?
@@ -439,7 +439,7 @@ grep -E "^(PROBE|LOUDNESS|SYNC|STILLS|FRAMES)" "$W/logs/verify.log" | cut -c1-40
 
 if [ "$YT_UPLOAD" = 1 ]; then
   log "PHASE upload"
-  U=("$PY" -m renderfarm upload --file "$M" --title "$YT_TITLE" --privacy "$YT_PRIVACY")
+  U=("$PY" -m webgl2video upload --file "$M" --title "$YT_TITLE" --privacy "$YT_PRIVACY")
   if [ -n "$YT_DESCRIPTION" ] && [ -f "$FARM/$YT_DESCRIPTION" ]; then U+=(--description-file "$FARM/$YT_DESCRIPTION"); fi
   "${U[@]}" > "$W/logs/upload.log" 2>&1
   grep -v "^  " "$W/logs/upload.log" | while read -r line; do log "$line"; done
