@@ -9,7 +9,7 @@
 #      memory and the NVENC sessions allow), measuring frames per second, the GPU, PCIe, the encoder and where the CPU
 #      goes, then projecting minutes and dollars for each tested worker count
 #   4. the decision: "go <workers>" or "stop" in $WORKSPACE/DECISION (pod.sh <run> decide "go 11"); with BUDGET
-#      (dollars), the fastest tested count whose projection fits goes by itself. No decision in DECIDE_MINUTES: the pod
+#      (dollars), the fastest tested count whose projection fits goes by itself (on a near tie, the most workers). No decision in DECIDE_MINUTES: the pod
 #      stops (it is not deleted) and its volume keeps every finished segment
 #   5. the rest of the film, NW workers on one queue (each job claimed with mkdir, which only one worker can win), each
 #      job checked as it lands (python -m webgl2video qa: unexpected cuts, single-frame flashes, stills)
@@ -153,6 +153,7 @@ cpu_quota() {  # the cores this container may use (cgroup v2, then v1), not the 
   case "$q" in max|-1|"") getconf _NPROCESSORS_ONLN;; *) awk -v q="$q" -v p="$p" 'BEGIN { printf "%.1f", q / p }';; esac
 }
 
+now() { python3 -c 'import time; print(f"{time.time():.3f}")'; } # sub-second (macOS date has no %N)
 load_jobs() { JOBS=(); while IFS= read -r l; do [ -n "$l" ] && JOBS+=("$l"); done < "$W/queue.txt"; }
 frames_done() {  # the frames of the jobs marked done (a job rendered again on a resumed run counts once)
   local i j n=0
@@ -361,13 +362,13 @@ else
     if [ ${#IDX[@]} = 0 ]; then log "STAGE s$((s + 1)): its jobs were done in an earlier run: skipped"; continue; fi
     tag="s$((s + 1))-w${#IDX[@]}"
     samplers_start "$tag" 2
-    ST=$(date +%s); PIDS=(); STAGE_JOBS=(); k=0
+    ST=$(now); PIDS=(); STAGE_JOBS=(); k=0
     for i in "${IDX[@]}"; do
       mkdir -p "$W/claim/$i"; STAGE_JOBS+=("${JOBS[$i]}")
       ( job "$k" "$i" || touch "$W/STOP" ) & PIDS+=($!); k=$((k + 1))
     done
     wait "${PIDS[@]}"
-    ET=$(date +%s); samplers_stop
+    ET=$(now); samplers_stop
     [ -e "$W/STOP" ] && halt_keep "a test job failed (see the JOB lines above)"
     "$PY" "$HERE/ladder.py" stage "$W" "$tag" "$ST" "$ET" "${STAGE_JOBS[@]}" > "$W/logs/stage-$tag.log" 2>&1
     while read -r line; do log "$line"; done < "$W/logs/stage-$tag.log"

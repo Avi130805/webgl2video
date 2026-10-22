@@ -52,7 +52,8 @@ Everything below runs from your machine; nothing is spent until `--go`.
    cloud/runpod/pod.sh <run folder> decide "go 11"     # or "stop"
    ```
 
-   With `--budget 0.60` on the launcher it decides by itself: the fastest tested count whose projection fits, or stop.
+   With `--budget 0.60` on the launcher it decides by itself: the fastest tested count whose projection fits (on rates
+   within 5% of it, the most workers), or stop.
    No decision in `--decide-minutes` (20): the pod stops, keeping its work (below).
 7. The results come back into the run folder (`~/.webgl2video/runs/<name>-<date>/deliver`): a QA sheet and JSON per
    job, stills, the scaling test's numbers, every log, and the master itself unless it went to YouTube (`--upload`).

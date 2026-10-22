@@ -4,6 +4,7 @@ launcher's bundle, and the whole pod job run on this machine (setup skipped, x26
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tarfile
@@ -61,6 +62,12 @@ class Ladder(unittest.TestCase):
         r = subprocess.run([PY, RUNPOD / "ladder.py", "project", w, "36000", "1000", "0.29", str(int(time.time())), "72", "2",
                             "--budget", "0.30"], capture_output=True, text=True, check=True)
         self.assertTrue(r.stdout.strip().splitlines()[-1].startswith("AUTO stop"))
+        # equal rates (within noise) go with more workers, whatever order the stages were measured in
+        (w / "logs" / "stage-s1-w1.txt").write_text("STAGE s1-w1: 1 workers, 500 frames in 25.0 s (20.00 frames/s); steady 20.00 frames/s\n")
+        (w / "logs" / "stage-s3-w4.txt").write_text("STAGE s3-w4: 4 workers, 2000 frames in 101.0 s (19.80 frames/s); steady 19.60 frames/s\n")
+        r = subprocess.run([PY, RUNPOD / "ladder.py", "project", w, "36000", "1000", "0.29", str(int(time.time())), "72", "2",
+                            "--budget", "5"], capture_output=True, text=True, check=True)
+        self.assertEqual(r.stdout.strip().splitlines()[-1], "AUTO go 4")
 
 
 class Deploy(unittest.TestCase):
@@ -127,8 +134,13 @@ class PodJobHere(unittest.TestCase):
         self.bundle(d)
         code, log = self.job(d, BUDGET="1")
         self.assertEqual(code, 0, log[-3000:])
-        for want in ("GPU conversion: exact", "STAGE s1-w1", "STAGE s2-w2", "AUTO go 2", "DECISION: go 2"):
+        for want in ("GPU conversion: exact", "STAGE s1-w1", "STAGE s2-w2"):
             self.assertIn(want, log)
+        # the decision depends on the rates measured here (timing): it is made, and it is one of the tested counts
+        go = re.search(r"^.*AUTO go (\d+)$", log, re.M)
+        self.assertTrue(go, log[-2000:])
+        self.assertIn(int(go.group(1)), (1, 2))
+        self.assertIn(f"DECISION: go {go.group(1)}", log)
         self.finished(d, log)
 
     def test_halt_then_resume(self):

@@ -10,7 +10,8 @@
                     [--budget DOLLARS]
       what the rest would take at each tested worker count: the rate, plus a page load a job (PAGE_LOAD_MIN, 1.0) and
       the join, the checks and the upload (TAIL_MIN, 12). With --budget, the last line is the decision: "AUTO go <n>"
-      (the fastest tested count whose whole pod fits the budget) or "AUTO stop <why>"
+      (the fastest tested count whose whole pod fits the budget; on rates within 5% of it, the most workers) or
+      "AUTO stop <why>"
 """
 import glob
 import os
@@ -70,7 +71,7 @@ def stage(w, tag, st, et, jobs):
                 done += at(t1) - at(t0)
             steady = done / (t1 - t0)
     if steady is None:  # jobs too short for a steady window: the rate with the page loads
-        steady, kind = frames / max(1, et - st), "gross"
+        steady, kind = frames / max(0.1, et - st), "gross"
     dm = open(f"{w}/logs/dmon-{tag}.txt", errors="replace").read().splitlines() if os.path.exists(f"{w}/logs/dmon-{tag}.txt") else []
     cols, rows = None, []
     for line in dm:
@@ -85,7 +86,7 @@ def stage(w, tag, st, et, jobs):
     avg = lambda k: f"{stt.mean(vals(k)):.0f}" if vals(k) else "-"
     mx = lambda k: f"{max(vals(k)):.0f}" if vals(k) else "-"
     cpu = open(f"{w}/logs/cpu-{tag}.txt").read().strip() if os.path.exists(f"{w}/logs/cpu-{tag}.txt") else "CPU: no sample"
-    out = [f"STAGE {tag}: {n} workers, {frames} frames in {et - st} s ({frames / max(1, et - st):.2f} frames/s with page loads);"
+    out = [f"STAGE {tag}: {n} workers, {frames} frames in {et - st:.1f} s ({frames / max(0.1, et - st):.2f} frames/s with page loads);"
            f" {kind} {steady:.2f} frames/s; s per frame by job: " + ", ".join(f"{j} {spf.get(j, 0):.2f}" for j in jobs),
            f"STAGE {tag} GPU: sm {avg('sm')}%, mem {avg('mem')}%, enc {avg('enc')}%, clocks {avg('pclk')}/{avg('mclk')} MHz,"
            f" power {avg('pwr')} W, PCIe rx {avg('rxpci')} tx {avg('txpci')} MB/s, video memory up to {mx('fb')} MB",
@@ -96,7 +97,7 @@ def stage(w, tag, st, et, jobs):
 
 def project(w, f, done, price, t0, njobs, q, budget=None):
     page_load, tail = float(os.environ.get("PAGE_LOAD_MIN", "1.0")), float(os.environ.get("TAIL_MIN", "12"))
-    best = None
+    fits = []
     for p in sorted(glob.glob(f"{w}/logs/stage-*.txt")):
         m = re.search(r"STAGE s\d+-w(\d+): .*?(steady|gross) ([\d.]+) frames/s", open(p).read())
         if not m:
@@ -107,16 +108,20 @@ def project(w, f, done, price, t0, njobs, q, budget=None):
         cost = (so_far + mins) / 60 * price
         print(f"PROJECTION {n} workers: {r:.2f} frames/s {m.group(2)}; the rest about {mins:.0f} min; the whole pod about"
               f" {so_far + mins:.0f} min, ${cost:.2f} at ${price}/h")
-        if budget is not None and cost <= budget and (best is None or r > best[1]):
-            best = (n, r)
+        if budget is not None and cost <= budget:
+            fits.append((n, r))
     if budget is not None:
-        print(f"AUTO go {best[0]}" if best else f"AUTO stop: no tested worker count fits the ${budget:.2f} budget")
+        # the fastest count that fits; among counts within 5% of it (measurement noise), the most workers, so a tie
+        # never picks fewer workers by chance
+        top = max((r for _, r in fits), default=0)
+        best = max((n for n, r in fits if r >= 0.95 * top), default=None)
+        print(f"AUTO go {best}" if best else f"AUTO stop: no tested worker count fits the ${budget:.2f} budget")
 
 
 if __name__ == "__main__":
     cmd, a = sys.argv[1], sys.argv[2:]
     if cmd == "stage":
-        stage(a[0], a[1], int(a[2]), int(a[3]), a[4:])
+        stage(a[0], a[1], float(a[2]), float(a[3]), a[4:])
     elif cmd == "project":
         budget = None
         if "--budget" in a:
