@@ -1,0 +1,18 @@
+# work folders and renders
+.renderfarm/
+runs/
+*.mp4
+*.mkv
+*.wav
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+build/
+dist/
+
+# secrets never belong here
+*.env
+!cloud/runpod/job.env.example
+.DS_Store

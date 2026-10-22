@@ -1,0 +1,22 @@
+No license has been chosen yet.
+
+Until one is, the default applies: all rights reserved by the copyright holder. Please do not reuse this code until a
+license replaces this file.
+
+For the maintainer, the two candidates:
+
+  Apache License 2.0   https://www.apache.org/licenses/LICENSE-2.0.txt
+                       permissive, with an explicit patent grant and a NOTICE convention; common for
+                       infrastructure and tooling that companies adopt.
+
+  MIT License          https://opensource.org/license/mit
+                       permissive and as short as a license gets; the most common choice for small tools.
+
+Either fits this project. Apache-2.0 is the safer default if you expect companies to use it; MIT if you want the
+least friction. To choose, replace this file with the license's full text, put the year and your name in its
+copyright line, and set `license` in pyproject.toml to match.
+
+Third-party notes: cloud/nvenc-gpu-filter.c names a few constants and structure layouts of NVIDIA's driver interface,
+as published in NVIDIA's open-gpu-kernel-modules (MIT/GPL-2.0 dual license); no code is copied from it. The tests and
+the example use Playwright (Apache-2.0), numpy (BSD-3-Clause) and ffmpeg (LGPL/GPL, run as a separate program, not
+bundled).
