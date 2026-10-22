@@ -3,9 +3,11 @@
 Render any WebGL or HTML animation (Three.js, shaders, p5.js, AI-generated pages) to frame-exact 4K60 video on a GPU,
 locally or on cheap cloud GPUs.
 
-![Two frames of the example page, either side of its hard cut](docs/hello.jpg)
+![webgl2video: frame-exact 4K60 video from any WebGL or HTML animation](docs/cover.jpg)
 
-*`examples/hello`, frames 75 and 330, as webgl2video renders them.*
+*A frame from a 10-minute 4K60 science film rendered with it. Below: `examples/hello`, frames 75 and 330.*
+
+![Two frames of the example page, either side of its hard cut](docs/hello.jpg)
 
 ## What it solves
 
